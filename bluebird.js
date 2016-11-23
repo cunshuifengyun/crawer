@@ -13,6 +13,8 @@ var ProgressBar = require('progress');
 var totalSuccessed = 0;
 var totalFailed = 0;
 var allPicNum = 0;
+var green = '\u001b[42m \u001b[0m';
+var red = '\u001b[41m \u001b[0m';
 
 start();
 function start() {
@@ -52,8 +54,9 @@ function getAsync(url) {
 
                     if(err) {
                         if(retry!==3) {
-                            console.log('这是第%j次尝试',retry);
                             console.log(err.message);
+                            console.log('这是第%j次尝试',retry);
+
                             setTimeout(function () {
                                 getUrl(url);
                             },10000)
@@ -129,12 +132,14 @@ function getImageShow(url,index) {
             var picNum = $('.pagenavi a').last().prev().text();
             var title = $('.main-title').text().replace(/[\/\\\|\<\>\*\:\?\"]/,'_');
             var dirName = imageRoot+'/'+groupNum+'--'+title;
-            bar = new ProgressBar('downloading [:bar]:percent :etas',{
-                complete: '=',
-                incomplete: '',
-                width: 20,
-                total: Number(picNum)
-            });
+
+            bar = new ProgressBar('下载中     :bar :percent eta: :etas :current/:total :file', {
+                complete: green,
+                incomplete: red,
+                width: 30,
+                total: Number(picNum),
+                clear: true
+            })
             groupNum++;
             console.time('group');
             mkdirp(dirName, function (err) {
@@ -158,9 +163,9 @@ function getImageShow(url,index) {
         .then(function(result) {
 
             return Promise.map(result.urls, function(url,index) {
-                bar.tick(1);
 
-                return getImageUrl(url, result.targetDir,index);
+
+                return getImageUrl(url, result.targetDir,index,bar);
             },{concurrency: 1})
         })
         .then(function(result) {
@@ -188,7 +193,7 @@ function getImageShow(url,index) {
 }
 
 //拉取图片展示页面，获取图片src
-function getImageUrl(url, targetDir,index) {
+function getImageUrl(url, targetDir,index,bar) {
     return getAsync(url)
         .then(function(result){
 
@@ -198,8 +203,9 @@ function getImageUrl(url, targetDir,index) {
 
         })
         .then(function(result) {
-
-            return downloadImage(result,targetDir,index+result.substr(-4,4));
+            var fileName = index+result.substr(-4,4);
+            bar.tick({file:fileName})
+            return downloadImage(result,targetDir,fileName);
         })
         .then(function(result) {
             return result;
